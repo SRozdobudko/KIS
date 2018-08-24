@@ -7,12 +7,12 @@
             <v-toolbar-title color>Добавление нового пользователя</v-toolbar-title>
           </v-toolbar>
           <v-card-text>
-            <v-form ref="form" v-model="valid" validation>
+            <v-form ref="form" v-model="valid" lazy-validation>
               <v-layout row wrap>
                 <v-flex xs12 sm4 pa-1>
                   <v-text-field
                     name="sname"
-                    label="Фамилия"
+                    label="Фамилия *"
                     type="text"
                     required
                     :rules="[v => !!v || 'Фамилия обязательное поле !']"
@@ -23,7 +23,7 @@
                 <v-flex xs12 sm4 pa-1>
                   <v-text-field
                     name="name"
-                    label="Имя"
+                    label="Имя *"
                     type="text"
                     required
                     :rules="[v => !!v || 'Имя обязательное поле !']"
@@ -34,7 +34,7 @@
                 <v-flex xs12 sm4 pa-1>
                   <v-text-field
                     name="fname"
-                    label="Oтчество"
+                    label="Oтчество *"
                     type="text"
                     required
                     :rules="[v => !!v || 'Отчество обязательное поле !']"
@@ -51,43 +51,46 @@
                     item-value="type"
                     v-model="documentSelectedType"
                     label="Тип паспорта"
-                  ></v-select>{{documentSelectedType}}/{{currentDocType === 'foreigner'}}
+                  ></v-select>
                 </v-flex>
-                <template v-if="currentDocType === 'rus'">
+                <template v-if="documentSelectedType === 'rus'">
                   <v-flex xs12 sm4 pa-1 d-flex>
                     <v-text-field
                       name="serieRus"
-                      label="Серия паспорта Rus"
+                      label="Серия паспорта *"
                       type="text"
-                      v-mask="'####'"
-                      v-if="currentDocType !== 'foreigner'"
-                      v-model="serieRus">
+                      :mask="'####'"
+                      :rules="[v => !!v || 'Серия паспорта обязательное поле !']"
+                      v-model="serie">
                     </v-text-field>
                   </v-flex>
                   <v-flex xs12 sm4 pa-1 d-flex>
                     <v-text-field
                       name="docNumberRus"
-                      label="Номер паспорта"
+                      label="Номер паспорта *"
                       type="text"
-                      v-mask="'######'"
-                      v-model="docNumberRus">
+                      :rules="[v => !!v || 'Номер паспорта обязательное поле !']"
+                      :mask="'######'"
+                      v-model="docNumber">
                     </v-text-field>
                   </v-flex>
                 </template>
-                <template v-else-if="currentDocType === 'foreigner'">
+                <template v-else-if="documentSelectedType === 'foreigner'">
                   <v-flex xs12 sm4 pa-1 d-flex>
                     <v-text-field
                       name="serie"
-                      label="Серия паспорта Not rus"
+                      label="Серия паспорта *"
                       type="text"
+                      :rules="[v => !!v || 'Серия паспорта обязательное поле !']"
                       v-model="serie">
                     </v-text-field>
                   </v-flex>
                   <v-flex xs12 sm4 pa-1 d-flex>
                     <v-text-field
                       name="docNumber"
-                      label="Номер паспорта Not Rus"
+                      label="Номер паспорта"
                       type="text"
+                      :rules="[v => !!v || 'Номер паспорта обязательное поле !']"
                       v-model="docNumber">
                     </v-text-field>
                   </v-flex>
@@ -99,14 +102,14 @@
                     name="email"
                     label="Емейл"
                     type="text"
-                    :rules="[v => emailReg.test(v) || 'Недопустимые символы']"
+                    :rules="emailRules"
                     v-model="email">
                   </v-text-field>
                 </v-flex>
                 <v-flex xs12 sm4 pa-1 d-flex>
                   <v-text-field
                     name="phone"
-                    label="Телефон"
+                    label="Телефон *"
                     type="tel"
                     v-mask="'+# (###) ###-####'"
                     :rules="[v => !!v || 'Телефон обязательное поле !']"
@@ -115,9 +118,9 @@
                 </v-flex>
                 <v-flex xs12 sm4 pa-1>
                   <v-menu
-                    ref="menu"
+                    ref="birthMenu"
                     :close-on-content-click="false"
-                    v-model="menu1"
+                    v-model="birthMenu"
                     :nudge-right="40"
                     lazy
                     transition="scale-transition"
@@ -128,7 +131,7 @@
                     <v-text-field
                       slot="activator"
                       v-model="birthDate"
-                      label="Дата рождения"
+                      label="Дата рождения *"
                       prepend-icon="event"
                       :rules="[v => !!v || 'Дата рождения обязательное поле !']"
                       readonly
@@ -137,7 +140,8 @@
                       ref="picker"
                       v-model="birthDate"
                       :max="new Date().toISOString().substr(0, 10)"
-                      min="1950-01-01"
+                      :min="minDate"
+                      @change="saveBirthDate"
                     ></v-date-picker>
                   </v-menu>
                 </v-flex>
@@ -146,26 +150,27 @@
                 <v-flex xs12 sm4 pa-1 d-flex>
                   <v-select
                     :items="groupType"
+                    v-model="group"
                     :rules="[v => !!v || 'Группы обязательное поле !']"
-                    label="Группы пользователя"
+                    label="Группы пользователя *"
                   ></v-select>
                 </v-flex>
                 <v-flex xs12 sm4 pa-1>
                   <v-menu
-                    ref="menu"
+                    ref="workMenu"
                     :close-on-content-click="false"
-                    v-model="menu2"
+                    v-model="workMenu"
                     :nudge-right="40"
                     lazy
                     transition="scale-transition"
                     offset-y
                     full-width
-                    min-width="290px"
-                  >
+                    min-width="290px">
+
                     <v-text-field
                       slot="activator"
                       v-model="workDate"
-                      label="Дата трудоустройства"
+                      label="Дата трудоустройства *"
                       prepend-icon="event"
                       readonly
                       :rules="[v => !!v || 'Дата трудоустройства обязательное поле !']"
@@ -174,35 +179,43 @@
                       ref="picker"
                       v-model="workDate"
                       :max="new Date().toISOString().substr(0, 10)"
-                      min="1950-01-01"
+                      :min="minDate"
+                      @change="saveWorkDate"
                     ></v-date-picker>
                   </v-menu>
                 </v-flex>
                 <v-flex xs12 sm4 pa-1 d-flex>
                   <v-select
                     :items="statusType"
+                    v-model="status"
                     :rules="[v => !!v || 'Статус обязательное поле !']"
-                    label="Статус"
+                    label="Статус *"
                   ></v-select>
                 </v-flex>
               </v-layout>
-
             </v-form>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
             <v-btn
               color="warning"
-              :disabled="!valid"
-              @click=""
+              @click="clear"
+              small
             >Очистить
             </v-btn>
-            <v-btn
-              color="primary"
-              :disabled="!valid"
-              @click=""
-            >Продолжить
-            </v-btn>
+            <v-dialog v-model="dialog" :disabled="!valid" persistent max-width="290">
+              <v-btn slot="activator" small :disabled="!valid" color="primary" @click.stop="submit">Продолжить</v-btn>
+              <v-card>
+                <v-card-title class="headline">Пользователь успешно создан!</v-card-title>
+                <v-card-text>
+                  {{ this.user ? this.user.name : ''}}, {{this.user ? this.user.sname: ''}}
+                </v-card-text>
+                <v-card-actions>
+                  <v-spacer></v-spacer>
+                  <v-btn color="green darken-1" flat @click.native="dialog = false">Закрыть</v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
           </v-card-actions>
         </v-card>
       </v-flex>
@@ -213,28 +226,39 @@
 <script>
   import {mask} from 'vue-the-mask'
 
+  const currentDate = new Date();
+  currentDate.setFullYear(currentDate.getFullYear() - 18).toString();
   export default {
     name: "NewUser",
     directives: {mask},
     data() {
       return {
+        user: null,
+        minDate: currentDate.toISOString().substr(0, 4),
         valid: false,
-        name: '',
-        sname: '',
-        fname: '',
+        name: null,
+        sname: null,
+        fname: null,
         documentSelectedType: null,
-        serieRus: null,
-        docNumberRus: null,
         serie: null,
         docNumber: null,
         currentDocType: null,
-        phone: '',
-        email: '',
-        menu1: false,
-        birthDate: '',
-        menu2: false,
-        workDate: '',
-        group: '',
+        phone: null,
+        email: null,
+        emailRules:  [
+          (v) => { if(v) {
+            return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(v) || 'E-mail должен быть валидным !'
+          } else {
+            return true;
+          }
+          }],
+        birthMenu: false,
+        birthDate: null,
+        workMenu: false,
+        workDate: null,
+        group: null,
+        status: null,
+        dialog: false,
         documentType: [
           {type: 'rus', description: 'Паспорт гражданина РФ'},
           {type: 'foreigner', description: 'Паспорт иностранного гражданина'}
@@ -245,14 +269,15 @@
         statusType: [
           'Активен', 'Собеседование', 'Отпуск', 'Отгул', 'Командировка'
         ],
-        emailReg: /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,24}))$/
+        dialog: false
       }
     },
     watch: {
-      documentSelectedType: function (val) {
-        console.log('Changed', val);
-        this.currentDocType = val;
-      }
+      watch: {
+        workMenu(val) {
+          val && this.$nextTick(() => (this.$refs.picker.activePicker = 'YEAR'))
+        }
+      },
     },
     methods: {
       onlyLetters(evt) {
@@ -263,6 +288,41 @@
         } else {
           evt.preventDefault();
           return;
+        }
+      },
+      saveWorkDate(date) {
+        this.$refs.workMenu.save(date);
+      },
+      saveBirthDate(date) {
+        this.$refs.birthMenu.save(date);
+      },
+      clear() {
+        this.$refs.form.reset();
+      },
+      submit() {
+        this.dialog = false;
+        if (this.$refs.form.validate()) {
+          this.dialog = true;
+          const User = {
+            name: this.name,
+            sname: this.sname,
+            fatherName: this.fname,
+            documentType: {
+              type: this.documentSelectedType,
+              info: {
+                serie: this.serie,
+                documentNunmber: this.docNumber
+              }
+            },
+            email: this.email ? this.email : `${this.phone.replace(/\D/g, '')}@mail.ru`,
+            phone: this.phone,
+            birthDate: this.birthDate,
+            workDate: this.workDate,
+            userGroup: this.group,
+            status: this.status
+          };
+          this.user = User;
+          console.log('User', User);
         }
       }
     }
